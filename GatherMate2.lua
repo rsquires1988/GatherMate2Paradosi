@@ -75,7 +75,10 @@ local defaults = {
 				["autoImport"] = false,
 				["bcOnly"] = false,
 			},
-		}
+		},
+		minimapIcon = {
+			hide = false,
+		},
 	},
 }
 local floor = floor

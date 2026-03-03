@@ -5,6 +5,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("GatherMate2", false)
 
 -- Databroker support
 local DataBroker = LibStub:GetLibrary("LibDataBroker-1.1",true)
+local LibDBIcon = LibStub("LibDBIcon-1.0", true)
 
 local WoWClassic = (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC)
 local WoWBC = (WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC)
@@ -951,8 +952,14 @@ importOptions.args.GatherMateData = {
 	name = "GatherMate2Data", -- addon name to import from, don't localize
 	handler = ImportHelper,
 	disabled = function()
-		local name, title, notes, loadable, reason, security, newVersion = GetAddOnInfo("GatherMate2_Data")
-		local enabled = GetAddOnEnableState(UnitName("player"), "GatherMate2_Data") > 0
+		local _GetAddOnInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
+		local name, title, notes, loadable, reason, security, newVersion = _GetAddOnInfo("GatherMate2_Data")
+		local enabled
+		if C_AddOns and C_AddOns.GetAddOnEnableState then
+			enabled = C_AddOns.GetAddOnEnableState("GatherMate2_Data") > 0
+		else
+			enabled = GetAddOnEnableState(UnitName("player"), "GatherMate2_Data") > 0
+		end
 		-- disable if the addon is not enabled, or
 		-- disable if there is a reason why it can't be loaded ("MISSING" or "DISABLED")
 		return not enabled or (reason ~= nil and reason ~= "DEMAND_LOADED")
@@ -1024,7 +1031,8 @@ importOptions.args.GatherMateData = {
 			desc = L["Load GatherMate2Data and import the data to your database."],
 			type = "execute",
 			func = function()
-				local loaded, reason = LoadAddOn("GatherMate2_Data")
+				local _LoadAddOn = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
+				local loaded, reason = _LoadAddOn("GatherMate2_Data")
 				local GatherMateData = LibStub("AceAddon-3.0"):GetAddon("GatherMate2_Data")
 				if loaded and GatherMateData.generatedVersion then
 					local dataVersion = tonumber(GatherMateData.generatedVersion:match("%d+"))
@@ -1078,6 +1086,7 @@ local acr = LibStub("AceConfigRegistry-3.0")
 local acd = LibStub("AceConfigDialog-3.0")
 
 local function findPanel(name, parent)
+	if not InterfaceOptionsFrameAddOns then return nil end
 	for i, button in next, InterfaceOptionsFrameAddOns.buttons do
 		if button.element then
 			if name and button.element.name == name then return button
@@ -1093,10 +1102,12 @@ function Config:OnInitialize()
 
 	acr:RegisterOptionsTable("GatherMate 2", generalOptions)
 	local options = acd:AddToBlizOptions("GatherMate 2", "GatherMate 2")
-	options:HookScript("OnShow", function()
-		local p = findPanel("GatherMate 2")
-		if p and p.element.collapsed then OptionsListButtonToggle_OnClick(p.toggle) end
-	end)
+	if InterfaceOptionsFrameAddOns then
+		options:HookScript("OnShow", function()
+			local p = findPanel("GatherMate 2")
+			if p and p.element.collapsed then OptionsListButtonToggle_OnClick(p.toggle) end
+		end)
+	end
 
 	acr:RegisterOptionsTable("GM2/Minimap", minimapOptions)
 	acd:AddToBlizOptions("GM2/Minimap", "Minimap", "GatherMate 2")
@@ -1117,7 +1128,11 @@ function Config:OnInitialize()
 	acd:AddToBlizOptions("GM2/FAQ", "FAQ", "GatherMate 2")
 
 	local function openOptions()
-		InterfaceOptionsFrame_OpenToCategory("GatherMate 2")
+		if Settings and Settings.OpenToCategory then
+			Settings.OpenToCategory("GatherMate 2")
+		elseif InterfaceOptionsFrame_OpenToCategory then
+			InterfaceOptionsFrame_OpenToCategory("GatherMate 2")
+		end
 	end
 
 	SLASH_GatherMate21 = "/gathermate"
@@ -1150,6 +1165,9 @@ function Config:OnInitialize()
 				tip:Show()
 			end,
 		})
+		if LibDBIcon then
+			LibDBIcon:Register("GatherMate2", launcher, GatherMate.db.profile.minimapIcon)
+		end
 	end
 end
 
@@ -1171,7 +1189,8 @@ function Config:CheckAutoImport()
 		if verline and v["autoImport"] then
 			local dataVersion = tonumber(verline:match("%d+"))
 			if dataVersion and dataVersion > v["lastImport"] then
-				local loaded, reason = LoadAddOn(k)
+				local _LoadAddOn = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
+				local loaded, reason = _LoadAddOn(k)
 				if loaded then
 					local addon = LibStub("AceAddon-3.0"):GetAddon(k)
 					local filter = nil
