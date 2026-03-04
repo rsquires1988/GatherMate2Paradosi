@@ -7,7 +7,7 @@ local LibStub = LibStub
 local gui = LibStub("AceGUI-3.0")
 local reg = LibStub("AceConfigRegistry-3.0")
 
-local MAJOR, MINOR = "AceConfigDialog-3.0", 81
+local MAJOR, MINOR = "AceConfigDialog-3.0", 87
 local AceConfigDialog, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not AceConfigDialog then return end
@@ -2011,7 +2011,25 @@ function AceConfigDialog:AddToBlizOptions(appName, name, parent, ...)
 		end
 		group:SetCallback("OnShow", FeedToBlizPanel)
 		group:SetCallback("OnHide", ClearBlizPanel)
-		InterfaceOptions_AddCategory(group.frame)
+		if Settings and Settings.RegisterCanvasLayoutCategory then
+			local categoryName = name or appName
+			if parent then
+				local parentCategory = BlizOptions[parent] and BlizOptions[parent][parent]
+				local parentCategoryID = parentCategory and parentCategory:GetUserData("categoryID")
+				if parentCategoryID then
+					local subcategory = Settings.RegisterCanvasLayoutSubcategory(parentCategoryID, group.frame, categoryName)
+					subcategory.ID = categoryName
+					group:SetUserData("categoryID", subcategory)
+				end
+			else
+				local category = Settings.RegisterCanvasLayoutCategory(group.frame, categoryName)
+				category.ID = categoryName
+				group:SetUserData("categoryID", category)
+				Settings.RegisterAddOnCategory(category)
+			end
+		elseif InterfaceOptions_AddCategory then
+			InterfaceOptions_AddCategory(group.frame)
+		end
 		return group.frame
 	else
 		error(("%s has already been added to the Blizzard Options Window with the given path"):format(appName), 2)
